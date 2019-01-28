@@ -126,7 +126,9 @@ func NewChecker(mode CheckMode) *Checker {
 		graph: &graph{
 			nodes: make(map[interface{}]*graphNode),
 		},
-		topmostCache: make(map[*types.Scope]*types.Scope),
+		topmostCache:       make(map[*types.Scope]*types.Scope),
+		WholeProgram:       true,
+		ConsiderReflection: true,
 	}
 }
 
