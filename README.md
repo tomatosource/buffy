@@ -39,3 +39,7 @@ One unused thing per line - `${position} ${type} ${name} is unused`, unused obje
  - type
  - identifier
 
+
+## Another note
+
+A lot of this code (the majority) is lifted from `unused`, now known as `staticcheck`, I plan on rewriting it verrrry soon to be a little leaner/more understandable for our application.
