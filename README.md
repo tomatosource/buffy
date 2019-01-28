@@ -4,6 +4,8 @@
 
 To identify dead code in go programs. This includes unused exported functions/attrs so cannot be used on libs etc. This will be fixed soon.
 
+*PLEASE NOTE* This is very much a work in progress and has way too much stuff hardcoded just to get it to work, and sometimes it does!
+
 ## Installing
 
 ```
