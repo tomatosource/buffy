@@ -5,7 +5,9 @@ import (
 	"go/build"
 	"go/parser"
 	"go/types"
+	"log"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/kisielk/gotool"
@@ -101,6 +103,18 @@ func prettyPrintUnused(unused []Unused) {
 				}
 			}
 		}
-		fmt.Printf("%s %s is unused\n%s\n%s\n\n", typString(u.Obj), name, u.Obj.Type(), u.Position)
+		fmt.Printf(
+			"%s %s %s is unused\n",
+			relPath(u.Position.String()),
+			typString(u.Obj), name,
+		)
 	}
+}
+
+func relPath(p string) string {
+	dir, err := filepath.Abs(filepath.Dir(os.Args[0]))
+	if err != nil {
+		log.Fatal(err)
+	}
+	return strings.TrimPrefix(p, dir+"/")
 }
