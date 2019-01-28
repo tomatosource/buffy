@@ -101,6 +101,6 @@ func prettyPrintUnused(unused []Unused) {
 				}
 			}
 		}
-		fmt.Printf("%s %s is unused\n%s\n%s\n", typString(u.Obj), name, u.Obj.Type(), u.Position)
+		fmt.Printf("%s %s is unused\n%s\n%s\n\n", typString(u.Obj), name, u.Obj.Type(), u.Position)
 	}
 }
