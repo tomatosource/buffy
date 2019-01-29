@@ -60,7 +60,7 @@ func loadProgram() (*loader.Program, error) {
 	return lprog, nil
 }
 
-func resolveRelative(importPaths []string) (goFiles bool, err error) {
+func resolveRelative(importPaths []string) (bool, error) {
 	if len(importPaths) == 0 {
 		return false, nil
 	}
