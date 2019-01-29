@@ -5,7 +5,6 @@ import (
 	"go/ast"
 	"go/token"
 	"go/types"
-	"io"
 	"path/filepath"
 	"strings"
 
@@ -89,29 +88,12 @@ type graphNode struct {
 	n     int
 }
 
-type CheckMode int
-
-const (
-	CheckConstants CheckMode = 1 << iota
-	CheckFields
-	CheckFunctions
-	CheckTypes
-	CheckVariables
-
-	CheckAll = CheckConstants | CheckFields | CheckFunctions | CheckTypes | CheckVariables
-)
-
 type Unused struct {
 	Obj      types.Object
 	Position token.Position
 }
 
 type Checker struct {
-	Mode               CheckMode
-	WholeProgram       bool
-	ConsiderReflection bool
-	Debug              io.Writer
-
 	graph *graph
 
 	msCache      typeutil.MethodSetCache
@@ -120,23 +102,14 @@ type Checker struct {
 	interfaces   []*types.Interface
 }
 
-func NewChecker(mode CheckMode) *Checker {
+func NewChecker() *Checker {
 	return &Checker{
-		Mode: mode,
 		graph: &graph{
 			nodes: make(map[interface{}]*graphNode),
 		},
-		topmostCache:       make(map[*types.Scope]*types.Scope),
-		WholeProgram:       true,
-		ConsiderReflection: true,
+		topmostCache: make(map[*types.Scope]*types.Scope),
 	}
 }
-
-func (c *Checker) checkConstants() bool { return (c.Mode & CheckConstants) > 0 }
-func (c *Checker) checkFields() bool    { return (c.Mode & CheckFields) > 0 }
-func (c *Checker) checkFunctions() bool { return (c.Mode & CheckFunctions) > 0 }
-func (c *Checker) checkTypes() bool     { return (c.Mode & CheckTypes) > 0 }
-func (c *Checker) checkVariables() bool { return (c.Mode & CheckVariables) > 0 }
 
 func (c *Checker) markFields(typ types.Type) {
 	structType, ok := typ.Underlying().(*types.Struct)
@@ -153,9 +126,7 @@ func (c *Checker) markFields(typ types.Type) {
 func (c *Checker) Check(lprog *loader.Program) []Unused {
 	var unused []Unused
 	c.lprog = lprog
-	if c.WholeProgram {
-		c.findExportedInterfaces()
-	}
+	c.findExportedInterfaces()
 	for _, pkg := range c.lprog.InitialPackages() {
 		c.processDefs(pkg)
 		c.processUses(pkg)
@@ -183,10 +154,6 @@ func (c *Checker) Check(lprog *loader.Program) []Unused {
 	markNodesUsed(roots)
 	c.markNodesQuiet()
 
-	if c.Debug != nil {
-		c.printDebugGraph(c.Debug)
-	}
-
 	for _, node := range c.graph.nodes {
 		if node.used || node.quiet {
 			continue
@@ -196,12 +163,10 @@ func (c *Checker) Check(lprog *loader.Program) []Unused {
 			continue
 		}
 		found := false
-		if !false {
-			for _, pkg := range c.lprog.InitialPackages() {
-				if pkg.Pkg == obj.Pkg() {
-					found = true
-					break
-				}
+		for _, pkg := range c.lprog.InitialPackages() {
+			if pkg.Pkg == obj.Pkg() {
+				found = true
+				break
 			}
 		}
 		if !found {
@@ -287,39 +252,6 @@ func (c *Checker) useExportedFields(typ types.Type) {
 	}
 }
 
-func (c *Checker) useExportedMethods(typ types.Type) {
-	named, ok := typ.(*types.Named)
-	if !ok {
-		return
-	}
-	ms := typeutil.IntuitiveMethodSet(named, &c.msCache)
-	for i := 0; i < len(ms); i++ {
-		meth := ms[i].Obj()
-		if meth.Exported() {
-			c.graph.markUsedBy(meth, typ)
-		}
-	}
-
-	st, ok := named.Underlying().(*types.Struct)
-	if !ok {
-		return
-	}
-	n := st.NumFields()
-	for i := 0; i < n; i++ {
-		field := st.Field(i)
-		if !field.Anonymous() {
-			continue
-		}
-		ms := typeutil.IntuitiveMethodSet(field.Type(), &c.msCache)
-		for j := 0; j < len(ms); j++ {
-			if ms[j].Obj().Exported() {
-				c.graph.markUsedBy(field, typ)
-				break
-			}
-		}
-	}
-}
-
 func (c *Checker) processDefs(pkg *loader.PackageInfo) {
 	for _, obj := range pkg.Defs {
 		if obj == nil {
@@ -341,19 +273,7 @@ func (c *Checker) processDefs(pkg *loader.PackageInfo) {
 			// marshaling). Strictly speaking, we would only need to
 			// mark them used if an instance of the type was
 			// accessible via an interface value.
-			if !c.WholeProgram || c.ConsiderReflection {
-				c.useExportedFields(obj.Type())
-			}
-
-			// TODO(dh): Traditionally we have not marked all exported
-			// methods as exported, even though they're strictly
-			// speaking accessible through reflection. We've done that
-			// because using methods just via reflection is rare, and
-			// not worth the false negatives. With the new -reflect
-			// flag, however, we should reconsider that choice.
-			if !c.WholeProgram {
-				c.useExportedMethods(obj.Type())
-			}
+			c.useExportedFields(obj.Type())
 		}
 
 		switch obj := obj.(type) {
@@ -443,12 +363,8 @@ func (c *Checker) processUses(pkg *loader.PackageInfo) {
 func (c *Checker) findExportedInterfaces() {
 	c.interfaces = []*types.Interface{types.Universe.Lookup("error").Type().(*types.Named).Underlying().(*types.Interface)}
 	var pkgs []*loader.PackageInfo
-	if c.WholeProgram {
-		for _, pkg := range c.lprog.AllPackages {
-			pkgs = append(pkgs, pkg)
-		}
-	} else {
-		pkgs = c.lprog.InitialPackages()
+	for _, pkg := range c.lprog.AllPackages {
+		pkgs = append(pkgs, pkg)
 	}
 
 	for _, pkg := range pkgs {
@@ -486,7 +402,7 @@ func (c *Checker) processTypes(pkg *loader.PackageInfo) {
 			}
 		case *types.Struct:
 			c.useNoCopyFields(obj)
-			if pkg.Pkg.Name() != "main" && !c.WholeProgram {
+			if pkg.Pkg.Name() != "main" {
 				c.useExportedFields(obj)
 			}
 		}
@@ -807,48 +723,7 @@ func isMethod(obj types.Object) bool {
 	return obj.(*types.Func).Type().(*types.Signature).Recv() != nil
 }
 
-func isVariable(obj types.Object) bool {
-	_, ok := obj.(*types.Var)
-	return ok
-}
-
-func isConstant(obj types.Object) bool {
-	_, ok := obj.(*types.Const)
-	return ok
-}
-
-func isType(obj types.Object) bool {
-	_, ok := obj.(*types.TypeName)
-	return ok
-}
-
-func isField(obj types.Object) bool {
-	if obj, ok := obj.(*types.Var); ok && obj.IsField() {
-		return true
-	}
-	return false
-}
-
 func (c *Checker) checkFlags(v interface{}) bool {
-	obj, ok := v.(types.Object)
-	if !ok {
-		return false
-	}
-	if isFunction(obj) && !c.checkFunctions() {
-		return false
-	}
-	if isVariable(obj) && !c.checkVariables() {
-		return false
-	}
-	if isConstant(obj) && !c.checkConstants() {
-		return false
-	}
-	if isType(obj) && !c.checkTypes() {
-		return false
-	}
-	if isField(obj) && !c.checkFields() {
-		return false
-	}
 	return true
 }
 
@@ -872,7 +747,7 @@ func (c *Checker) isRoot(obj types.Object) bool {
 		}
 
 		// Package-level are used, except in package main
-		if isPkgScope(obj) && obj.Pkg().Name() != "main" && !c.WholeProgram {
+		if isPkgScope(obj) && obj.Pkg().Name() != "main" {
 			return true
 		}
 	}
@@ -973,40 +848,6 @@ func (c *Checker) topmostScope(scope *types.Scope, pkg *types.Package) (ret *typ
 		return scope
 	}
 	return c.topmostScope(scope.Parent(), pkg)
-}
-
-func (c *Checker) printDebugGraph(w io.Writer) {
-	fmt.Fprintln(w, "digraph {")
-	fmt.Fprintln(w, "n0 [label = roots]")
-	for _, node := range c.graph.nodes {
-		s := fmt.Sprintf("%s (%T)", node.obj, node.obj)
-		s = strings.Replace(s, "\n", "", -1)
-		s = strings.Replace(s, `"`, "", -1)
-		fmt.Fprintf(w, `n%d [label = %q]`, node.n, s)
-		color := "black"
-		switch {
-		case node.used:
-			color = "green"
-		case node.quiet:
-			color = "orange"
-		case !c.checkFlags(node.obj):
-			color = "purple"
-		default:
-			color = "red"
-		}
-		fmt.Fprintf(w, "[color = %s]", color)
-		fmt.Fprintln(w)
-	}
-
-	for _, node1 := range c.graph.nodes {
-		for node2 := range node1.uses {
-			fmt.Fprintf(w, "n%d -> n%d\n", node1.n, node2.n)
-		}
-	}
-	for _, root := range c.graph.roots {
-		fmt.Fprintf(w, "n0 -> n%d\n", root.n)
-	}
-	fmt.Fprintln(w, "}")
 }
 
 func isGenerated(comment string) bool {

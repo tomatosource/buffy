@@ -84,7 +84,7 @@ func resolveRelative(importPaths []string) (goFiles bool, err error) {
 }
 
 func checkProgram(p *loader.Program) {
-	c := NewChecker(CheckAll)
+	c := NewChecker()
 	unused := c.Check(p)
 	prettyPrintUnused(unused)
 }
