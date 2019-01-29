@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"sort"
 )
 
 func main() {
@@ -10,7 +11,13 @@ func main() {
 		panic(err)
 	}
 
-	for _, unused := range Check(p) {
-		fmt.Println(unused.String())
+	var unused []string
+	for _, u := range Check(p) {
+		unused = append(unused, u.String())
+	}
+	// consistent output:
+	sort.Strings(unused)
+	for _, u := range unused {
+		fmt.Println(u)
 	}
 }
