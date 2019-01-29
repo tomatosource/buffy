@@ -16,8 +16,12 @@ func main() {
 	p, err := loadProgram()
 	if err != nil {
 		panic(err)
-	} else {
-		checkProgram(p)
+	}
+
+	c := NewChecker()
+	unused := c.Check(p)
+	for _, u := range unused {
+		fmt.Println(u.String())
 	}
 }
 
@@ -79,12 +83,4 @@ func resolveRelative(importPaths []string) (goFiles bool, err error) {
 		importPaths[i] = bpkg.ImportPath
 	}
 	return false, nil
-}
-
-func checkProgram(p *loader.Program) {
-	c := NewChecker()
-	unused := c.Check(p)
-	for _, u := range unused {
-		fmt.Println(u.String())
-	}
 }
