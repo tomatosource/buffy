@@ -5,9 +5,7 @@ import (
 	"go/build"
 	"go/parser"
 	"go/types"
-	"log"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/kisielk/gotool"
@@ -86,35 +84,7 @@ func resolveRelative(importPaths []string) (goFiles bool, err error) {
 func checkProgram(p *loader.Program) {
 	c := NewChecker()
 	unused := c.Check(p)
-	prettyPrintUnused(unused)
-}
-
-func prettyPrintUnused(unused []Unused) {
 	for _, u := range unused {
-		name := u.Obj.Name()
-		if sig, ok := u.Obj.Type().(*types.Signature); ok && sig.Recv() != nil {
-			switch sig.Recv().Type().(type) {
-			case *types.Named, *types.Pointer:
-				typ := types.TypeString(sig.Recv().Type(), func(*types.Package) string { return "" })
-				if len(typ) > 0 && typ[0] == '*' {
-					name = fmt.Sprintf("(%s).%s", typ, u.Obj.Name())
-				} else if len(typ) > 0 {
-					name = fmt.Sprintf("%s.%s", typ, u.Obj.Name())
-				}
-			}
-		}
-		fmt.Printf(
-			"%s %s %s is unused\n",
-			relPath(u.Position.String()),
-			typString(u.Obj), name,
-		)
+		fmt.Println(u.String())
 	}
-}
-
-func relPath(p string) string {
-	dir, err := filepath.Abs(filepath.Dir(os.Args[0]))
-	if err != nil {
-		log.Fatal(err)
-	}
-	return strings.TrimPrefix(p, dir+"/")
 }

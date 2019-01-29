@@ -5,6 +5,8 @@ import (
 	"go/ast"
 	"go/token"
 	"go/types"
+	"log"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -91,6 +93,33 @@ type graphNode struct {
 type Unused struct {
 	Obj      types.Object
 	Position token.Position
+}
+
+func (u *Unused) String() string {
+	name := u.Obj.Name()
+	if sig, ok := u.Obj.Type().(*types.Signature); ok && sig.Recv() != nil {
+		switch sig.Recv().Type().(type) {
+		case *types.Named, *types.Pointer:
+			typ := types.TypeString(sig.Recv().Type(), func(*types.Package) string {
+				return ""
+			})
+			if len(typ) > 0 && typ[0] == '*' {
+				name = fmt.Sprintf("(%s).%s", typ, u.Obj.Name())
+			} else if len(typ) > 0 {
+				name = fmt.Sprintf("%s.%s", typ, u.Obj.Name())
+			}
+		}
+	}
+	dir, err := filepath.Abs(filepath.Dir(os.Args[0]))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return fmt.Sprintf(
+		"%s %s %s is unused",
+		strings.TrimPrefix(u.Position.String(), dir+"/"),
+		typString(u.Obj), name,
+	)
 }
 
 type Checker struct {
