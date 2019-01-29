@@ -18,10 +18,8 @@ func main() {
 		panic(err)
 	}
 
-	c := NewChecker()
-	unused := c.Check(p)
-	for _, u := range unused {
-		fmt.Println(u.String())
+	for _, unused := range Check(p) {
+		fmt.Println(unused.String())
 	}
 }
 

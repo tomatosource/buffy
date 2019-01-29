@@ -131,13 +131,14 @@ type Checker struct {
 	interfaces   []*types.Interface
 }
 
-func NewChecker() *Checker {
-	return &Checker{
+func Check(p *loader.Program) []Unused {
+	c := &Checker{
 		graph: &graph{
 			nodes: make(map[interface{}]*graphNode),
 		},
 		topmostCache: make(map[*types.Scope]*types.Scope),
 	}
+	return c.Check(p)
 }
 
 func (c *Checker) markFields(typ types.Type) {
