@@ -32,11 +32,11 @@ func (u *Unused) String() string {
 	return fmt.Sprintf(
 		"%s %s %s is unused",
 		strings.TrimPrefix(u.Position.String(), dir+"/"),
-		typString(u.Obj), name,
+		typeString(u.Obj), name,
 	)
 }
 
-func typString(obj types.Object) string {
+func typeString(obj types.Object) string {
 	switch obj := obj.(type) {
 	case *types.Func:
 		return "func"
@@ -83,7 +83,11 @@ func (g *graph) addObj(obj interface{}) {
 	if pt, ok := obj.(*types.Pointer); ok {
 		obj = pt.Elem()
 	}
-	node := &graphNode{obj: obj, uses: make(map[*graphNode]struct{}), n: labelCounter}
+	node := &graphNode{
+		obj:  obj,
+		uses: make(map[*graphNode]struct{}),
+		n:    labelCounter,
+	}
 	g.nodes[obj] = node
 	labelCounter++
 
