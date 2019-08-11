@@ -25,7 +25,6 @@ func main() {
 	for _, u := range Check(p) {
 		unused = append(unused, u.String())
 	}
-	// consistent output:
 	sort.Strings(unused)
 	for _, u := range unused {
 		fmt.Println(u)

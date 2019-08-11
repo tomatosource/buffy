@@ -86,10 +86,8 @@ func (g *graph) addObj(obj interface{}) {
 	node := &graphNode{
 		obj:  obj,
 		uses: make(map[*graphNode]struct{}),
-		n:    labelCounter,
 	}
 	g.nodes[obj] = node
-	labelCounter++
 
 	if obj, ok := obj.(*types.Struct); ok {
 		n := obj.NumFields()

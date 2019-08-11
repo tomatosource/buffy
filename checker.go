@@ -12,8 +12,6 @@ import (
 	"golang.org/x/tools/go/types/typeutil"
 )
 
-var labelCounter = 1
-
 type Checker struct {
 	graph        *graph
 	msCache      typeutil.MethodSetCache
@@ -32,7 +30,6 @@ type graphNode struct {
 	uses  map[*graphNode]struct{}
 	used  bool
 	quiet bool
-	n     int
 }
 
 type Unused struct {
@@ -46,13 +43,13 @@ func Check(p *loader.Program) []Unused {
 			nodes: make(map[interface{}]*graphNode),
 		},
 		topmostCache: make(map[*types.Scope]*types.Scope),
+		lprog:        p,
 	}
-	return c.Check(p)
+	return c.Check()
 }
 
-func (c *Checker) Check(lprog *loader.Program) []Unused {
+func (c *Checker) Check() []Unused {
 	var unused []Unused
-	c.lprog = lprog
 	c.findExportedInterfaces()
 	for _, pkg := range c.lprog.InitialPackages() {
 		c.processDefs(pkg)
